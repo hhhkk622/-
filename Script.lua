@@ -34,8 +34,6 @@ local speedToggle = false
 local espEnabled = false
 local spinning = false
 local flingEnabled = false
-local spectating = false
-local spectateTarget = nil
 local spinSpeed = 180
 local spinGyro = nil
 local spinConnection = nil
@@ -43,12 +41,10 @@ local invisibleParts = {}
 local nameTagsHidden = {}
 local clonedTools = {}
 local teleportGui = nil
-local infoGui = nil
-local spectateGui = nil
 local flingConnections = {}
 local flingCooldowns = {}
 
--- ---- 颜色常量（用于 WindUI 组件） ----
+-- ---- 颜色常量 ----
 local PURPLE_BTN = Color3.fromRGB(90, 45, 140)
 local INDICATOR_OFF = Color3.fromRGB(100, 100, 100)
 local INDICATOR_INVISIBLE = Color3.fromRGB(0, 200, 100)
@@ -67,8 +63,8 @@ b站：阿轲欣妍
 
 功能一览：
 🔘 功能一：隐身 / 附近道具 / 加速 / 透视 / 传送 / 旋转 / 甩飞
-🔘 功能二：玩家信息 / 观战 / 自然灾害 / 黑洞 / 重新加入此服务器
-🔘 新增脚本：飞 / 炉管r15 / 炉管r6 / VR脚本FE / 飞踢 / 祖国人 / 全能侠 / 火车头
+🔘 功能二：飞 / 炉管r15 / 炉管r6 / VR脚本FE / 飞踢 / 祖国人 / 全能侠 / 火车头 / 重新加入此服务器
+🔘 服务器脚本：恶魔学 / 墨水游戏 / 画我脚本 / 最强战场 / 自然灾害 / 活到7天 / 河北唐县 / 门
 🔘 最新公告：脚本于6月28日更新
 
 点击左上角「脚本」打开控制面板
@@ -372,128 +368,6 @@ local function toggleFling()
     if flingEnabled then enableFling() else clearFlingConnections() end
 end
 
--- ---- 自然灾害 ----
-local function floodDisaster()
-    local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local root = char.HumanoidRootPart
-    local center = root.Position
-    local floodParts = {}
-    for x = -20, 20, 4 do
-        for z = -20, 20, 4 do
-            local part = Instance.new("Part")
-            part.Size = Vector3.new(4, 0.5, 4)
-            part.CFrame = CFrame.new(center + Vector3.new(x, -5, z))
-            part.Anchored = true
-            part.BrickColor = BrickColor.new("Cyan")
-            part.Transparency = 0.6
-            part.Material = Enum.Material.Neon
-            part.Parent = workspace
-            table.insert(floodParts, part)
-        end
-    end
-    task.spawn(function()
-        for _ = 1, 50 do
-            for _, part in ipairs(floodParts) do
-                if part and part.Parent then
-                    part.CFrame = part.CFrame + Vector3.new(0, 0.3, 0)
-                end
-            end
-            task.wait(0.05)
-        end
-        task.wait(2)
-        for _, part in ipairs(floodParts) do
-            if part and part.Parent then part:Destroy() end
-        end
-    end)
-end
-
-local function meteorDisaster()
-    local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local root = char.HumanoidRootPart
-    local center = root.Position
-    for i = 1, 10 do
-        local spawnX = center.X + math.random(-30, 30)
-        local spawnZ = center.Z + math.random(-30, 30)
-        local meteor = Instance.new("Part")
-        meteor.Shape = Enum.PartType.Ball
-        meteor.Size = Vector3.new(3, 3, 3)
-        meteor.CFrame = CFrame.new(Vector3.new(spawnX, center.Y + 50, spawnZ))
-        meteor.Anchored = false
-        meteor.BrickColor = BrickColor.new("Really red")
-        meteor.Material = Enum.Material.Neon
-        meteor.Parent = workspace
-        local bv = Instance.new("BodyVelocity")
-        bv.MaxForce = Vector3.new(1e6, 1e6, 1e6)
-        bv.Velocity = Vector3.new(math.random(-10, 10), -100, math.random(-10, 10))
-        bv.Parent = meteor
-        game.Debris:AddItem(meteor, 5)
-    end
-end
-
-local function earthquakeDisaster()
-    local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local hum = char:FindFirstChild("Humanoid")
-    if hum then
-        hum.WalkSpeed = 0
-    end
-    task.spawn(function()
-        for _ = 1, 30 do
-            Cam.CFrame = Cam.CFrame * CFrame.Angles(math.rad(math.random(-2, 2)), math.rad(math.random(-2, 2)), 0)
-            task.wait(0.05)
-        end
-        if hum then hum.WalkSpeed = 16 end
-    end)
-end
-
-local function startNaturalDisaster()
-    local disasters = {floodDisaster, meteorDisaster, earthquakeDisaster}
-    local f = disasters[math.random(#disasters)]
-    f()
-end
-
-local function spawnBlackHole()
-    local char = p.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    local root = char.HumanoidRootPart
-    local pos = root.Position + root.CFrame.LookVector * 20
-
-    local hole = Instance.new("Part")
-    hole.Shape = Enum.PartType.Ball
-    hole.Size = Vector3.new(8, 8, 8)
-    hole.CFrame = CFrame.new(pos)
-    hole.BrickColor = BrickColor.new("Black")
-    hole.Material = Enum.Material.Neon
-    hole.Anchored = true
-    hole.CanCollide = false
-    hole.Parent = workspace
-
-    local glow = Instance.new("PointLight")
-    glow.Color = Color3.fromRGB(100, 0, 150)
-    glow.Range = 30
-    glow.Brightness = 2
-    glow.Parent = hole
-
-    task.spawn(function()
-        local startTime = tick()
-        while tick() - startTime < 5 do
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and not obj.Anchored and obj ~= hole and (obj.Position - pos).Magnitude < 40 then
-                    local bv = Instance.new("BodyVelocity")
-                    bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-                    bv.Velocity = (pos - obj.Position).Unit * (40 - (obj.Position - pos).Magnitude) * 1.5
-                    bv.Parent = obj
-                    game.Debris:AddItem(bv, 0.2)
-                end
-            end
-            task.wait(0.1)
-        end
-        hole:Destroy()
-    end)
-end
-
 local function rejoinServer()
     local success, err = pcall(function()
         TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId)
@@ -503,241 +377,6 @@ local function rejoinServer()
             TeleportService:Teleport(game.PlaceId)
         end)
     end
-end
-
--- ---- 玩家信息弹窗 ----
-function showPlayerInfo()
-    if infoGui then infoGui:Destroy() end
-    infoGui = Instance.new("ScreenGui")
-    infoGui.Name = "InfoGUI"
-    infoGui.Parent = p:WaitForChild("PlayerGui")
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 280, 0, 300)
-    frame.Position = UDim2.new(0.5, -140, 0.5, -150)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 0.2
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 30
-    local fcorner = Instance.new("UICorner")
-    fcorner.CornerRadius = UDim.new(0, 10)
-    fcorner.Parent = frame
-    frame.Parent = infoGui
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 25)
-    title.BackgroundTransparency = 1
-    title.Text = "本服务器玩家信息"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.ZIndex = 31
-    title.Parent = frame
-
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(0.92, 0, 0, 255)
-    scroll.Position = UDim2.new(0.04, 0, 0.1, 0)
-    scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    scroll.BackgroundTransparency = 0.5
-    scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 5
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scroll.ZIndex = 31
-    scroll.Parent = frame
-
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.Name
-    layout.Padding = UDim.new(0, 3)
-    layout.Parent = scroll
-
-    local players = game.Players:GetPlayers()
-    local totalHeight = 0
-    for _, player in ipairs(players) do
-        local container = Instance.new("Frame")
-        container.Size = UDim2.new(1, -8, 0, 50)
-        container.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
-        container.BackgroundTransparency = 0.3
-        local cc = Instance.new("UICorner")
-        cc.CornerRadius = UDim.new(0, 4)
-        cc.Parent = container
-        container.Parent = scroll
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -10, 0, 20)
-        nameLabel.Position = UDim2.new(0, 5, 0, 0)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        nameLabel.Text = player.Name
-        nameLabel.TextScaled = true
-        nameLabel.Font = Enum.Font.GothamBold
-        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Parent = container
-
-        local char = player.Character
-        local healthStr = "❌ 未出生"
-        if char and char:FindFirstChild("Humanoid") then
-            local hum = char.Humanoid
-            healthStr = "❤️ " .. math.floor(hum.Health) .. " / " .. math.floor(hum.MaxHealth)
-        end
-        local healthLabel = Instance.new("TextLabel")
-        healthLabel.Size = UDim2.new(1, -10, 0, 18)
-        healthLabel.Position = UDim2.new(0, 5, 0, 20)
-        healthLabel.BackgroundTransparency = 1
-        healthLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-        healthLabel.Text = healthStr
-        healthLabel.TextScaled = true
-        healthLabel.Font = Enum.Font.Gotham
-        healthLabel.TextXAlignment = Enum.TextXAlignment.Left
-        healthLabel.Parent = container
-
-        local toolsStr = ""
-        if char then
-            local tools = {}
-            for _, obj in ipairs(char:GetDescendants()) do
-                if obj:IsA("Tool") then table.insert(tools, obj.Name) end
-            end
-            toolsStr = #tools > 0 and "🎒 " .. table.concat(tools, ", ") or "🎒 无道具"
-        else
-            toolsStr = "🎒 无"
-        end
-        local toolsLabel = Instance.new("TextLabel")
-        toolsLabel.Size = UDim2.new(1, -10, 0, 14)
-        toolsLabel.Position = UDim2.new(0, 5, 0, 36)
-        toolsLabel.BackgroundTransparency = 1
-        toolsLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-        toolsLabel.Text = toolsStr
-        toolsLabel.TextScaled = true
-        toolsLabel.Font = Enum.Font.Gotham
-        toolsLabel.TextXAlignment = Enum.TextXAlignment.Left
-        toolsLabel.Parent = container
-
-        totalHeight = totalHeight + 53
-    end
-    scroll.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
-
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 20, 0, 20)
-    closeBtn.Position = UDim2.new(0.88, 0, 0.02, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextScaled = true
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.ZIndex = 33
-    local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(0, 4)
-    cc.Parent = closeBtn
-    closeBtn.Parent = frame
-
-    closeBtn.MouseButton1Click:Connect(function()
-        infoGui:Destroy()
-        infoGui = nil
-    end)
-end
-
--- ---- 观战功能 ----
-local function stopSpectate()
-    if spectating then
-        spectating = false
-        spectateTarget = nil
-        Cam.CameraSubject = p.Character and p.Character:FindFirstChild("Humanoid") or p.Character
-        Cam.CameraType = Enum.CameraType.Custom
-    end
-end
-
-local function showSpectateList()
-    if spectateGui then spectateGui:Destroy() end
-    spectateGui = Instance.new("ScreenGui")
-    spectateGui.Name = "SpectateGUI"
-    spectateGui.Parent = p:WaitForChild("PlayerGui")
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 200, 0, 250)
-    frame.Position = UDim2.new(0.5, -100, 0.5, -125)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-    frame.BackgroundTransparency = 0.2
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 30
-    local fcorner = Instance.new("UICorner")
-    fcorner.CornerRadius = UDim.new(0, 10)
-    fcorner.Parent = frame
-    frame.Parent = spectateGui
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 25)
-    title.BackgroundTransparency = 1
-    title.Text = "选择观战玩家"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextScaled = true
-    title.Font = Enum.Font.GothamBold
-    title.ZIndex = 31
-    title.Parent = frame
-
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(0.9, 0, 0, 200)
-    scroll.Position = UDim2.new(0.05, 0, 0.15, 0)
-    scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    scroll.BackgroundTransparency = 0.5
-    scroll.BorderSizePixel = 0
-    scroll.ScrollBarThickness = 5
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    scroll.ZIndex = 31
-    scroll.Parent = frame
-
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.Name
-    layout.Parent = scroll
-
-    local players = game.Players:GetPlayers()
-    local yCount = 0
-    for _, player in ipairs(players) do
-        if player ~= p then
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, -10, 0, 25)
-            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            btn.Text = player.Name
-            btn.TextScaled = true
-            btn.Font = Enum.Font.Gotham
-            btn.ZIndex = 32
-            local bc = Instance.new("UICorner")
-            bc.CornerRadius = UDim.new(0, 4)
-            bc.Parent = btn
-            btn.Parent = scroll
-
-            btn.MouseButton1Click:Connect(function()
-                if player.Character and player.Character:FindFirstChild("Humanoid") then
-                    spectating = true
-                    spectateTarget = player
-                    Cam.CameraSubject = player.Character:FindFirstChild("Humanoid")
-                    Cam.CameraType = Enum.CameraType.Custom
-                end
-                spectateGui:Destroy()
-                spectateGui = nil
-            end)
-            yCount = yCount + 1
-        end
-    end
-    scroll.CanvasSize = UDim2.new(0, 0, 0, yCount * 30)
-
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 20, 0, 20)
-    closeBtn.Position = UDim2.new(0.88, 0, 0.02, 0)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    closeBtn.Text = "✕"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextScaled = true
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.ZIndex = 33
-    local cc = Instance.new("UICorner")
-    cc.CornerRadius = UDim.new(0, 4)
-    cc.Parent = closeBtn
-    closeBtn.Parent = frame
-
-    closeBtn.MouseButton1Click:Connect(function()
-        spectateGui:Destroy()
-        spectateGui = nil
-    end)
 end
 
 -- ---- 角色重生重置 ----
@@ -758,7 +397,6 @@ p.CharacterAdded:Connect(function(newChar)
     if flingEnabled then clearFlingConnections() end
     speedToggle = false
     h.WalkSpeed = 16
-    if spectating then stopSpectate() end
     for _, toggle in ipairs(toggleRefs) do
         toggle:SetValue(false)
     end
@@ -812,6 +450,12 @@ Tabs.Func2 = Window:Tab({
     ShowTabTitle = true,
 })
 
+Tabs.ServerScripts = Window:Tab({
+    Title = "服务器脚本",
+    Icon = "cloud-lightning",
+    ShowTabTitle = true,
+})
+
 -- ---- 公告标签页 ----
 Tabs.Announce:Paragraph({
     Title = "📢 BALL HUB 公告",
@@ -821,7 +465,7 @@ Tabs.Announce:Paragraph({
     Color = "Blue",
 })
 
--- ---- 功能一标签页（原有开关 + 传送，无新增） ----
+-- ---- 功能一标签页（原有开关 + 传送） ----
 local toggleInvis = Tabs.Func1:Toggle({
     Title = "隐身",
     Icon = "eye-off",
@@ -889,58 +533,7 @@ Tabs.Func1:Button({
     Callback = toggleTeleport,
 })
 
--- ---- 功能二标签页（原有按钮 + 飞/炉管 + 新增五个按钮） ----
-Tabs.Func2:Button({
-    Title = "📋 本服务器玩家信息",
-    Callback = showPlayerInfo,
-})
-
-local spectateButton = Tabs.Func2:Button({
-    Title = "👀 观战玩家",
-    Callback = showSpectateList,
-})
-
-local stopSpectateButton = Tabs.Func2:Button({
-    Title = "🔴 停止观战",
-    Callback = function()
-        stopSpectate()
-        spectateButton:SetLocked(false)
-        stopSpectateButton:SetLocked(true)
-    end,
-    Locked = true,
-})
-
--- 重写观战相关函数以更新按钮锁定状态
-local originalShowSpectate = showSpectateList
-showSpectateList = function()
-    originalShowSpectate()
-    spectateButton:SetLocked(true)
-    stopSpectateButton:SetLocked(false)
-end
-
-local originalStopSpectate = stopSpectate
-stopSpectate = function()
-    originalStopSpectate()
-    spectateButton:SetLocked(false)
-    stopSpectateButton:SetLocked(true)
-end
-
-Tabs.Func2:Button({
-    Title = "🌪️ 自然灾害",
-    Callback = startNaturalDisaster,
-})
-
-Tabs.Func2:Button({
-    Title = "🕳️ 黑洞",
-    Callback = spawnBlackHole,
-})
-
-Tabs.Func2:Button({
-    Title = "🔄 重新加入此服务器",
-    Callback = rejoinServer,
-})
-
--- 第一次新增的按钮（飞、炉管r15、炉管r6）
+-- ---- 功能二标签页（飞 + 炉管 + 其他脚本 + 退出） ----
 Tabs.Func2:Button({
     Title = "✈️ 飞",
     Callback = function()
@@ -977,7 +570,6 @@ Tabs.Func2:Button({
     end,
 })
 
--- ====== 新增的五个按钮（VR、飞踢、祖国人、全能侠、火车头） ======
 Tabs.Func2:Button({
     Title = "🥽 VR脚本FE",
     Callback = function()
@@ -1038,6 +630,11 @@ Tabs.Func2:Button({
     end,
 })
 
+Tabs.Func2:Button({
+    Title = "🔄 重新加入此服务器",
+    Callback = rejoinServer,
+})
+
 -- ---- 退出按钮 ----
 Tabs.Func2:Button({
     Title = "🚪 退出脚本",
@@ -1047,7 +644,6 @@ Tabs.Func2:Button({
         if espEnabled then toggleESP() end
         if spinning then toggleSpin() end
         if flingEnabled then toggleFling() end
-        if spectating then stopSpectate() end
         h.WalkSpeed = 16
         Window:Close()
         local byeGui = Instance.new("ScreenGui")
@@ -1075,6 +671,105 @@ Tabs.Func2:Button({
         task.wait(3)
         byeGui:Destroy()
     end
+})
+
+-- ============================================================
+-- 4. 服务器脚本标签页
+-- ============================================================
+Tabs.ServerScripts:Button({
+    Title = "👹 恶魔学",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/nainshu/no/main/Demonology.lua"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "恶魔学加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "🖋️ 墨水游戏",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/ke9460394-dot/ugik/refs/heads/main/%E6%B1%89%E5%8C%96%E5%A2%A8%E6%B0%B4Ringta.txt"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "墨水游戏加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "🎨 画我脚本",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/ke9460394-dot/ugik/refs/heads/main/KENNY%E7%94%BB%E6%88%91.lua"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "画我脚本加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "⚔️ 最强战场",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Something478/MainScripts/refs/heads/main/BreezeHub.lua"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "最强战场加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "🌪️ 自然灾害",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/9NLK7/93qjoadnlaknwldk/main/main"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "自然灾害加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "📅 活到7天",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/rndmq/Serverlist/refs/heads/main/Server87"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "活到7天加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "🌾 河北唐县",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Sw1ndlerScripts/RobloxScripts/main/Tang%20Country.lua"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "河北唐县加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
+})
+
+Tabs.ServerScripts:Button({
+    Title = "🚪 门",
+    Callback = function()
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/65TwT8ja"))()
+        end)
+        if not success then
+            WindUI:Notify({ Title = "错误", Content = "门加载失败: " .. tostring(err), Duration = 3 })
+        end
+    end,
 })
 
 -- ---- 显示启动通知 ----
